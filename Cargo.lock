@@ -354,6 +354,7 @@ dependencies = [
  "clap",
  "dirs",
  "git2",
+ "url",
 ]
 
 [[package]]
