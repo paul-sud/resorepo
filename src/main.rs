@@ -5,6 +5,7 @@ use std::{fs, path::PathBuf, process::Command};
 use url::Url;
 
 const CACHE_DIR: &str = ".resorepo";
+const GITHUB_BASE_URL: &str = "https://github.com";
 
 #[derive(Clap)]
 #[clap(version = "1.0")]
@@ -20,9 +21,10 @@ struct Arguments {
 fn main() {
     let cache_path = initialize_cache();
     let args = Arguments::parse();
-    let repo_name = get_repo_name_from_url(&args.repo_url);
+    let mut parsed_url = parse_url(&args.repo_url);
+    let repo_name = get_repo_name_from_url(&mut parsed_url);
     let repo_path = cache_path.join(repo_name);
-    Repository::clone(&args.repo_url, &repo_path).expect("Failed to clone");
+    Repository::clone(parsed_url.as_str(), &repo_path).expect("Failed to clone");
     let mut command = Command::new("rg");
     for rg_arg in args.rg_args.iter() {
         command.arg(rg_arg);
@@ -43,8 +45,14 @@ fn initialize_cache() -> PathBuf {
     cache_dir
 }
 
-fn get_repo_name_from_url(repo_url: &str) -> String {
-    let mut parsed_url = Url::parse(repo_url).expect("Could not parse url");
+fn parse_url(repo_url: &str) -> Url {
+    match Url::parse(repo_url) {
+        Ok(result) => result,
+        Err(_) => Url::parse(GITHUB_BASE_URL).unwrap().join(repo_url).unwrap(),
+    }
+}
+
+fn get_repo_name_from_url(parsed_url: &mut Url) -> String {
     parsed_url.path_segments_mut().unwrap().pop_if_empty();
     parsed_url
         .path_segments()
@@ -59,16 +67,30 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_get_repo_name_from_url() {
+    fn test_parse_url() {
         let url = "https://www.github.com/foo/bar";
-        let result = get_repo_name_from_url(url);
+        let result = parse_url(url);
+        assert_eq!(result.as_str(), "https://www.github.com/foo/bar")
+    }
+
+    #[test]
+    fn test_parse_url_no_base() {
+        let url = "foo/bar";
+        let result = parse_url(url);
+        assert_eq!(result.as_str(), "https://www.github.com/foo/bar")
+    }
+
+    #[test]
+    fn test_get_repo_name_from_url() {
+        let mut url = Url::parse("https://www.github.com/foo/bar").unwrap();
+        let result = get_repo_name_from_url(&mut url);
         assert_eq!(result, "bar".to_owned())
     }
 
     #[test]
     fn test_get_repo_name_from_url_trailing_slash() {
-        let url = "https://www.github.com/foo/bar/";
-        let result = get_repo_name_from_url(url);
+        let mut url = Url::parse("https://www.github.com/foo/bar/").unwrap();
+        let result = get_repo_name_from_url(&mut url);
         assert_eq!(result, "bar".to_owned())
     }
 }
