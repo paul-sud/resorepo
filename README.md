@@ -6,7 +6,7 @@ If you're like me, you often need to search through other people's code on GitHu
 
 ## Installation
 
-First ensure Rust and `git` are installed. Then clone this repo, `cd` into it and run `cargo build --release`. You can then copy the binary somewhere useful like `/usr/local/bin`.
+First ensure Rust and `git` are installed. Then clone this repo, `cd` into it and run `cargo build --release`. If desired, you can then add it to your `PATH`, for instance by copying the binary `./target/release/resorepo` to `/usr/local/bin`
 
 Usage requires `rg` installed and on your path as it is executed as a subprocess.
 
@@ -15,6 +15,8 @@ Usage requires `rg` installed and on your path as it is executed as a subprocess
 ```bash
 resorepo <repo-url> [rg-args]...
 ```
+
+You must specify the remote repository as either a full URL or in the `owner/repository` shorthand form for GitHub repositories. The `rg-args` are passed to `ripgrep`, see its [documentation](https://github.com/BurntSushi/ripgrep) for details or consult the `rg` help with `rg -h`/`rg --help`.
 
 ### Examples
 
@@ -42,9 +44,16 @@ To use regular expressions starting with dashes, you can supply the `--` separat
 resorepo paul-sud/s3-md5 -- -- "-md5"
 ```
 
-## Future Ideas
+## Configuration
 
-* When clone capabilities are available in `gitoxide` repo cloning should be updated to use it. Currently using `git2`
+The time-to-live (TTL) for the cached repositories can be configured via setting the value of `cache_ttl_days` in the config file `~/.resorepo/resorepo_config.yaml`. Once it is implemented, after searching `resosepo` will automatically clean up any repositories older than the expiration date.
+
+## Future Ideas/Features
+
+* When clone capabilities are available in `gitoxide` repo cloning should be updated to use it. Currently using `git2`, `gitoxide` seems faster and also doesn't depend on `libgit2`
 * Use the `rg` API instead of invoking as a subprocess. This is difficult because useful functions like [`search_parallel`](https://github.com/BurntSushi/ripgrep/blob/9b01a8f9ae53ebcd05c27ec21843758c2c1e823f/crates/core/main.rs#L127) are not part of `ripgrep`'s public API, and there would be a lot of copy-pasting code in here. Parsing the command line arguments like `ripgrep` would be similarly non-trivial.
-* Support cloning over SSH (git2-rs defaults to HTTPS)
+* Choose a branch or tag
+* Organize repos by organization to avoid conflicts between repos with the same name in the cache
+* Clone over SSH (git2-rs defaults to HTTPS)
+* Pull in new changes if the cached repo is still around: https://stackoverflow.com/questions/58768910/how-to-perform-git-pull-with-the-rust-git2-crate
 * A web interface or Chrome extension could be pretty cool so you don't have to copy-paste URLs from browser to the terminal
